@@ -12,45 +12,54 @@ import (
 // resources = map[uri]Resource
 var resources = map[string]*doc.Resource{}
 
-type Server struct {
-	*httptest.Server
-	doc *doc.Doc
+type BlueprintGenerator struct {
+	Resources map[string]*doc.Resource
+	doc       *doc.Doc
 }
 
+var generator BlueprintGenerator
+
+type Server struct {
+	*httptest.Server
+	gen *BlueprintGenerator
+}
+
+
 // TODO: filter out 404 responses
-func NewServer(handler http.Handler) (s *Server, err error) {
+func NewServer(handler http.Handler, fn parse.URLVarExtractor) (s *httptest.Server) {
 	// check if url var extractor func is set
 	if parse.Extractor == nil {
 		panic("please set a URLVarExtractor.")
 	}
 
-	outDoc, err := doc.NewDoc(".")
-	if err != nil {
-		return s, err
-	}
+	httptestServer := httptest.NewServer(handleAndRecord(handler, generator.doc, fn))
 
-	httptestServer := httptest.NewServer(handleAndRecord(handler, outDoc))
-
-	return &Server{
-		httptestServer,
-		outDoc,
-	}, nil
+	return httptestServer
 }
 
-func (s *Server) Finish() {
-	s.Close()
+func BeginGenerating(){
+	generator = BlueprintGenerator{}
+	generator.Resources = make(map[string]*doc.Resource)
+	generator.doc, _ = doc.NewDoc(".")
+}
 
-	for _, r := range resources {
-		s.doc.AddResource(r)
-	}
-
-	err := s.doc.Write()
+func FinishGenerating(){
+	err := generator.doc.Write()
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
-func handleAndRecord(handler http.Handler, outDoc *doc.Doc) http.HandlerFunc {
+func (s *Server) Finish() {
+	s.Close()
+
+	for _, r := range s.gen.Resources {
+		s.gen.doc.AddResource(r)
+	}
+
+}
+
+func handleAndRecord(handler http.Handler, outDoc *doc.Doc, fn parse.URLVarExtractor) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// copy request body into Request object
 		docReq, err := doc.NewRequest(req)
@@ -66,7 +75,7 @@ func handleAndRecord(handler http.Handler, outDoc *doc.Doc) http.HandlerFunc {
 		handler.ServeHTTP(resp, req)
 
 		// setup resource
-		u := doc.NewURL(req)
+		u := doc.NewURL(req, fn)
 		path := u.ParameterizedPath
 
 		if resources[path] == nil {

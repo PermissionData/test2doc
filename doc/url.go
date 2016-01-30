@@ -14,22 +14,22 @@ type URL struct {
 	Parameters        []Parameter
 }
 
-func NewURL(req *http.Request) *URL {
+func NewURL(req *http.Request, fn parse.URLVarExtractor) *URL {
 	u := &URL{
 		rawURL: req.URL,
 	}
-	u.ParameterizedPath, u.Parameters = paramPath(req)
+	u.ParameterizedPath, u.Parameters = paramPath(req, fn)
 	return u
 }
 
-func paramPath(req *http.Request) (string, []Parameter) {
+func paramPath(req *http.Request, fn parse.URLVarExtractor) (string, []Parameter) {
 	uri, err := url.QueryUnescape(req.URL.Path)
 	if err != nil {
 		// fall back to unescaped uri
 		uri = req.URL.Path
 	}
 
-	vars := (*parse.Extractor)(req)
+	vars := fn(req)
 	params := []Parameter{}
 
 	for k, v := range vars {
