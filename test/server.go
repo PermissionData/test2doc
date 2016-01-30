@@ -26,15 +26,18 @@ type Server struct {
 
 
 // TODO: filter out 404 responses
-func NewServer(handler http.Handler, fn parse.URLVarExtractor) (s *httptest.Server) {
+func NewServer(handler http.Handler, fn parse.URLVarExtractor) (s *Server) {
 	// check if url var extractor func is set
-	if parse.Extractor == nil {
+	if fn == nil {
 		panic("please set a URLVarExtractor.")
 	}
-
+	
 	httptestServer := httptest.NewServer(handleAndRecord(handler, generator.doc, fn))
 
-	return httptestServer
+	return &Server{
+		httptestServer,
+		&generator,
+	}
 }
 
 func BeginGenerating(){
