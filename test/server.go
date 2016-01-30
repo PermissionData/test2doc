@@ -10,7 +10,7 @@ import (
 )
 
 // resources = map[uri]Resource
-var resources = map[string]*doc.Resource{}
+//var resources = map[string]*doc.Resource{}
 
 type BlueprintGenerator struct {
 	Resources map[string]*doc.Resource
@@ -81,15 +81,15 @@ func handleAndRecord(handler http.Handler, outDoc *doc.Doc, fn parse.URLVarExtra
 		u := doc.NewURL(req, fn)
 		path := u.ParameterizedPath
 
-		if resources[path] == nil {
-			resources[path] = doc.NewResource(u)
+		if generator.Resources[path] == nil {
+			generator.Resources[path] = doc.NewResource(u)
 		}
 
 		// store response body in Response object
 		docResp := doc.NewResponse(resp.W)
 
 		// find action
-		action := resources[path].FindAction(req.Method)
+		action := generator.Resources[path].FindAction(req.Method)
 		if action == nil {
 			// make new action
 			action, err = doc.NewAction(req.Method, resp.HandlerInfo.FuncName)
@@ -99,7 +99,7 @@ func handleAndRecord(handler http.Handler, outDoc *doc.Doc, fn parse.URLVarExtra
 			}
 
 			// add Action to Resource's list of Actions
-			resources[path].AddAction(action)
+			generator.Resources[path].AddAction(action)
 		}
 
 		// add request, response to action
