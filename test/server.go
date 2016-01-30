@@ -76,37 +76,41 @@ func handleAndRecord(handler http.Handler, outDoc *doc.Doc, fn parse.URLVarExtra
 		resp := NewResponseWriter(rw)
 
 		handler.ServeHTTP(resp, req)
-
-		// setup resource
-		u := doc.NewURL(req, fn)
-		path := u.ParameterizedPath
-
-		if generator.Resources[path] == nil {
-			generator.Resources[path] = doc.NewResource(u)
-		}
-
-		// store response body in Response object
-		docResp := doc.NewResponse(resp.W)
-
-		// find action
-		action := generator.Resources[path].FindAction(req.Method)
-		if action == nil {
-			// make new action
-			action, err = doc.NewAction(req.Method, resp.HandlerInfo.FuncName)
-			if err != nil {
-				log.Println("Error:", err.Error())
-				return
+						
+		if (resp.W.Code < 400 || resp.W.Code >= 500) {
+								
+			// setup resource
+			u := doc.NewURL(req, fn)
+			path := u.ParameterizedPath
+	
+			if generator.Resources[path] == nil {
+				generator.Resources[path] = doc.NewResource(u)
 			}
-
-			// add Action to Resource's list of Actions
-			generator.Resources[path].AddAction(action)
+	
+			// store response body in Response object
+			docResp := doc.NewResponse(resp.W)
+	
+			// find action
+			action := generator.Resources[path].FindAction(req.Method)
+			if action == nil {
+				// make new action
+				action, err = doc.NewAction(req.Method, resp.HandlerInfo.FuncName)
+				if err != nil {
+					log.Println("Error:", err.Error())
+					return
+				}
+	
+				// add Action to Resource's list of Actions
+				generator.Resources[path].AddAction(action)
+			}
+	
+			// add request, response to action
+			action.AddRequest(docReq, docResp)
+	
+			// copy response over to w
+			doc.CopyHeader(w.Header(), resp.Header())
 		}
-
-		// add request, response to action
-		action.AddRequest(docReq, docResp)
-
-		// copy response over to w
-		doc.CopyHeader(w.Header(), resp.Header())
+		
 		w.WriteHeader(resp.W.Code)
 		w.Write(resp.W.Body.Bytes())
 	}
