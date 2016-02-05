@@ -24,14 +24,13 @@ type Server struct {
 	gen *BlueprintGenerator
 }
 
-
 // TODO: filter out 404 responses
 func NewServer(handler http.Handler, fn parse.URLVarExtractor) (s *Server) {
 	// check if url var extractor func is set
 	if fn == nil {
 		panic("please set a URLVarExtractor.")
 	}
-	
+
 	httptestServer := httptest.NewServer(handleAndRecord(handler, generator.doc, fn))
 
 	return &Server{
@@ -40,13 +39,13 @@ func NewServer(handler http.Handler, fn parse.URLVarExtractor) (s *Server) {
 	}
 }
 
-func BeginGenerating(){
+func BeginGenerating() {
 	generator = BlueprintGenerator{}
 	generator.Resources = make(map[string]*doc.Resource)
 	generator.doc, _ = doc.NewDoc(".")
 }
 
-func FinishGenerating(){
+func FinishGenerating() {
 	err := generator.doc.Write()
 	if err != nil {
 		panic(err.Error())
@@ -76,41 +75,44 @@ func handleAndRecord(handler http.Handler, outDoc *doc.Doc, fn parse.URLVarExtra
 		resp := NewResponseWriter(rw)
 
 		handler.ServeHTTP(resp, req)
-						
-		if (resp.W.Code < 400 || resp.W.Code >= 500) {
-								
+
+		if resp.W.Code < 400 || resp.W.Code >= 500 {
+
 			// setup resource
 			u := doc.NewURL(req, fn)
 			path := u.ParameterizedPath
-	
+
 			if generator.Resources[path] == nil {
 				generator.Resources[path] = doc.NewResource(u)
 			}
-	
+
 			// store response body in Response object
 			docResp := doc.NewResponse(resp.W)
-	
+
 			// find action
 			action := generator.Resources[path].FindAction(req.Method)
 			if action == nil {
 				// make new action
 				action, err = doc.NewAction(req.Method, resp.HandlerInfo.FuncName)
+
+				//log.Println(" Path ", req.URL, " Action ", action)
+
 				if err != nil {
 					log.Println("Error:", err.Error())
 					return
 				}
-	
+
 				// add Action to Resource's list of Actions
 				generator.Resources[path].AddAction(action)
 			}
-	
+
 			// add request, response to action
 			action.AddRequest(docReq, docResp)
-	
+
 			// copy response over to w
 			doc.CopyHeader(w.Header(), resp.Header())
 		}
-		
+
 		w.WriteHeader(resp.W.Code)
 		w.Write(resp.W.Body.Bytes())
 	}

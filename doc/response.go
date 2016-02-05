@@ -32,11 +32,12 @@ type Response struct {
 func NewResponse(resp *httptest.ResponseRecorder) *Response {
 	content := resp.Body.Bytes()
 	contentType := resp.Header().Get("Content-Type")
+	contentEncoding := resp.Header().Get("Content-Encoding")
 
 	return &Response{
 		StatusCode: resp.Code,
 		Header:     NewHeader(resp.Header()),
-		Body:       NewBody(content, contentType),
+		Body:       NewBody(content, contentType, contentEncoding),
 	}
 }
 

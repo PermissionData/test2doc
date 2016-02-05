@@ -1,6 +1,7 @@
 package doc
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,21 +31,27 @@ func paramPath(req *http.Request, fn parse.URLVarExtractor) (string, []Parameter
 	}
 
 	vars := fn(req)
+
 	params := []Parameter{}
 
 	for k, v := range vars {
+
 		uri = strings.Replace(uri, "/"+v, "/{"+k+"}", 1)
+
 		params = append(params, MakeParameter(k, v))
 	}
 
 	var queryKeys []string
 	queryParams := req.URL.Query()
 
-	for k, vs := range queryParams {
-		queryKeys = append(queryKeys, k)
+	log.Println("Query Params: ", queryParams)
 
+	for k, vs := range queryParams {
+
+		queryKeys = append(queryKeys, k)
 		// just take first value
 		params = append(params, MakeParameter(k, vs[0]))
+
 	}
 
 	var queryKeysStr string

@@ -38,10 +38,11 @@ func NewRequest(req *http.Request) (*Request, error) {
 
 	b2bytes := body2.Bytes()
 	contentType := req.Header.Get("Content-Type")
+	contentEncoding := req.Header.Get("Content-Encoding")
 
 	return &Request{
 		Header: NewHeader(req.Header),
-		Body:   NewBody(b2bytes, contentType),
+		Body:   NewBody(b2bytes, contentType, contentEncoding),
 		Method: req.Method,
 	}, nil
 }
